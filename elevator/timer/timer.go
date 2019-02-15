@@ -10,7 +10,9 @@ type Door_timer struct{
     run_time_ms int64
 }
 
-func Start(t *Door_timer, run_time_ms int64) {
+var t = Door_timer{0,0}
+
+func Start(run_time_ms int64) {
         
     t.start_time_ms = time.Now().UnixNano() / int64(time.Millisecond)
 
@@ -18,12 +20,16 @@ func Start(t *Door_timer, run_time_ms int64) {
 
 }
 
-func TimedOut(t Door_timer) bool{
+func TimedOut() bool{
 
 
     if ((t.start_time_ms + t.run_time_ms) < (time.Now().UnixNano() / int64(time.Millisecond))){
         return true
     }
     return false
+}
+
+func Hello() string{
+    return "world"
 }
 

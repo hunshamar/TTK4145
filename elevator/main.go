@@ -1,8 +1,10 @@
 package main
 
 import "./elevio"
-import "fmt"
 import "./timer"
+import "./orders"
+import "fmt"
+
 
 
 func main(){
@@ -25,6 +27,7 @@ func main(){
     go elevio.PollObstructionSwitch(drv_obstr)
     go elevio.PollStopButton(drv_stop)
     
+
     //go timer.Start(door_timer, run_time_ms)
     //go timer.TimedOut(door_timer) 
 
@@ -61,31 +64,50 @@ func main(){
 
     */
 
+    
+    elevio.SetMotorDirection(elevio.MD_Down)
+    
+    for(elevio.GetFloor() == -1){
+        fmt.Printf("Hello %s", timer.Hello())
+    }
+    elevio.SetMotorDirection(elevio.MD_Stop)
 
 
 
-    for {
+    /*
+    for(-1 == <-drv_floors){
+        elevio.SetMotorDirection(d)
+        fmt.Printf("while");
+    }
+    */
+
+    /* ---------------*/
+
+
+    for {   
         select {
         case a := <- drv_buttons:
             fmt.Printf("%+v\n", a)
             elevio.SetButtonLamp(a.Button, a.Floor, true)
+            orders.Add(int(a.Button), int(a.Floor))
             
         case a := <- drv_floors:
             fmt.Printf("%+v  ", a)
 
-            t := timer.Door_timer
+            orders.PrintOrders()
+
+            //t := timer.Door_timer
         
+            
 
-
-            timer.Start(&t,3000)
+            timer.Start(3000)
             elevio.SetMotorDirection(elevio.MD_Stop)
-            for (!timer.TimedOut(t)){
+            for (!timer.TimedOut()){
 
             }
 
             
 
-            fmt.Printf("floor\n")
 
             elevio.SetMotorDirection(d)
 
