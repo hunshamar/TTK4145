@@ -2,11 +2,19 @@
 package orders
 
 import "fmt"
+import ""
 
 var O_hall_up = [4]int{0,0,0,0}
 var O_hall_down = [4]int{0,0,0,0}
 var O_cab = [4]int{0,0,0,0}
 
+var orders =[3][4]{
+	{0,0,0,0},
+	{0,0,0,0},
+	{0,0,0,0}
+} 
+
+orders[button][floor]
 
 
 func PrintOrders(){
