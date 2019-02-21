@@ -90,4 +90,8 @@ func Empty()bool{
 	return !Above(0) && !Below(3)
 }
 
+func OnFloor(floor int)bool{
+	return Above(floor-1) && Below(floor+1)
+}
+
 
