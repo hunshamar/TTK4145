@@ -50,6 +50,32 @@ func PrintStates(){
 	orders.PrintOrders()
 }
 
+func FindNextState(floor int, current_direction elevio.MotorDirection) state_t{
+	if (orders.Empty()){
+		return idle
+	}
+		
+
+	if (current_direction == elevio.MD_Up || current_direction == elevio.MD_Stop){
+		if orders.Above(floor){
+			return moving_up
+		}else{
+			return moving_down // snu, finnes ordre andre veien
+		}
+	}
+
+
+	if (current_direction == elevio.MD_Down){
+		if orders.Below(floor){
+			return moving_down
+		}else{
+			return moving_up // snu
+		}
+	}
+	return idle
+}
+
+
 func Loop(){
 
 	numFloors := 4
@@ -59,68 +85,102 @@ func Loop(){
 
     elevio.Init("localhost:15657", numFloors)
     
-    var d elevio.MotorDirection = elevio.MD_Up
+	var d elevio.MotorDirection = elevio.MD_Stop
+	var timer_running bool = false
+
     //elevio.SetMotorDirection(d)
     
     drv_buttons := make(chan elevio.ButtonEvent)
     drv_floors  := make(chan int)
     drv_obstr   := make(chan bool)
-    drv_stop    := make(chan bool)    
+	drv_stop    := make(chan bool)   
+	drv_timer   := make(chan bool) 
     
     go elevio.PollButtons(drv_buttons)
     go elevio.PollFloorSensor(drv_floors)
     go elevio.PollObstructionSwitch(drv_obstr)
 	go elevio.PollStopButton(drv_stop)
 	go buttons.MirrorOrders()
+	go timer.PollTimer(drv_timer)
 	
 
 	Init()
 
 	for {   
+
+		if elevio.GetFloor() != -1 && !timer_running && timer.TimedOut(){
+			fmt.Printf("jepp her er jeg \n")
+			current_state = FindNextState(current_floor,d)
+			switch current_state{
+				case moving_up:
+					d = elevio.MD_Up
+				case moving_down:
+					d = elevio.MD_Down
+				case idle:
+					d = elevio.MD_Stop
+				case door_open:
+					d = elevio.MD_Stop
+			}
+			elevio.SetMotorDirection(d)
+		}
+
         select {
-        case a := <- drv_buttons:
+		
+        case a := <- drv_buttons: 
             fmt.Printf("%+v\n", a)
-            orders.Add(int(a.Button), int(a.Floor))
-            
-		case a := <- drv_floors:
+			orders.Add(int(a.Button), int(a.Floor))
+			
+			
+		
+
+		case a := <- drv_floors: // Nytt floor, kan jeg stoppe her?
 			
 			current_floor = a
-			if orders.Local_orders[elevio.BT_Cab][current_floor] == 1{
+			
+
+
+
+			if orders.ExecutableOnFloor(int(current_state), current_floor){
+				current_state = door_open
 				PrintStates()
 				timer.Start(3000)
 				elevio.SetMotorDirection(elevio.MD_Stop)
-				orders.Remove(elevio.BT_Cab,current_floor)
-				for (!timer.TimedOut()){
-					//Wait until timer finished
-				} 
-				elevio.SetMotorDirection(d)
+				orders.Remove(current_floor)
 			}
 
 
 
-            if a == numFloors-1 {
-                d = elevio.MD_Down
-            } else if a == 0 {
-                d = elevio.MD_Up
-            }
-            elevio.SetMotorDirection(d)
             
             
+		case a := <- drv_timer: // When timer toggles
+			if (a){
+				fmt.Println("timer off")
+				timer_running = false
+			}else{
+				timer_running = true
+				fmt.Println("timer on")
+			}
+			
         case a := <- drv_obstr:
-            fmt.Printf("%+v\n", a)
+			fmt.Printf("%+v\n", a)
+			PrintStates()
+			/*
             if a {
                 elevio.SetMotorDirection(elevio.MD_Stop)
             } else {
                 elevio.SetMotorDirection(d)
-            }
+            }*/
             
         case a := <- drv_stop:
-            fmt.Printf("%+v\n", a)
+			fmt.Printf("%+v\n", a)
+			PrintStates()
+
+			/*
             for f := 0; f < numFloors; f++ {
                 for b := elevio.ButtonType(0); b < 3; b++ {
                     elevio.SetButtonLamp(b, f, false)
                 }
-            }
+            }*/
         }
 
     }   

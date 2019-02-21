@@ -4,10 +4,11 @@ package timer
 import "time"
 
 
+const _pollRate = 20 * time.Millisecond
 
 type Door_timer struct{
-    start_time_ms int64
-    run_time_ms int64
+    start_time_ms int64 
+    run_time_ms int64 
 }
 
 var t = Door_timer{0,0}
@@ -27,6 +28,18 @@ func TimedOut() bool{
         return true
     }
     return false
+}
+
+func PollTimer(receiver chan<- bool){
+	prev := false
+	for {
+		time.Sleep(_pollRate)
+		v := TimedOut()
+		if v != prev {
+			receiver <- v
+		}
+		prev = v
+	}
 }
 
 func Hello() string{
