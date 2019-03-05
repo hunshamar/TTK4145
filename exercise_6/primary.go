@@ -13,7 +13,7 @@ import (
 	"os/exec"
 )
 
-type HelloMsg struct {
+type BackupMsg struct {
 	Message string
 	Iter    int
 }
@@ -24,46 +24,41 @@ func main() {
 
 	timer.WatchdogInit(3000)
 
-	//peerUpdateCh := make(chan peers.PeerUpdate)
 
-	//go peers.Receiver(15647, peerUpdateCh)
-
-	watchdog := make(chan bool)
-	helloRx := make(chan HelloMsg)
+	watchdogTimedOut := make(chan bool)
+	helloRx := make(chan BackupMsg)
 
 	/* ----------------- Start receiving -------------------*/
 
 	go bcast.Receiver(16569, helloRx)
-	go timer.WatchdogPoll(watchdog)
+	go timer.WatchdogPoll(watchdogTimedOut)
 
-	fmt.Println("Started recieving (backup)")
-	
+	fmt.Printf("\n\n")
+	fmt.Println("+-------------------------------------+")
+	fmt.Println("| IS BACKUP:  starting receiving data |")
+	fmt.Println("+-------------------------------------+")
+	fmt.Printf("\n")
+
 	exit := false
 	for !exit{
 		select {
-		/*case p := <-peerUpdateCh:
-			fmt.Printf("Peer update:\n")
-			fmt.Printf("  Peers:    %q\n", p.Peers)
-			fmt.Printf("  New:      %q\n", p.New) 	
-			fmt.Printf("  Lost:     %q\n", p.Lost)*/
 
 		case a := <-helloRx:
-			//fmt.Printf("Received: %#v\n", a)
 			counter = a.Iter
-
-
 			timer.WatchdogReset()
-		case w := <-watchdog:
-			fmt.Printf("Watchdog sees: %#v\n", w)
+			
+		case <-watchdogTimedOut:
+			fmt.Printf("Watchdog timed out\n")
 			exit = true
 		}
 	}
-	fmt.Println("Primary has crashed, open backup")
+	fmt.Println("PRIMARY has crashed, become PRIMARY and open new BACKUP")
 
 
+
+	
 	/* ----------------- Spawn backup -------------------*/
 	cmd := exec.Command("gnome-terminal", "--window", "-x","go", "run", "primary.go") 
-	//cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 
@@ -71,6 +66,8 @@ func main() {
 	if err != nil{
 		log.Fatal(err)
 	}
+
+
 
 	/* ----------------- Start transmiting -------------------*/
 	
@@ -90,23 +87,26 @@ func main() {
 
 	//peerTxEnable := make(chan bool)
 	//go peers.Transmitter(15647, id, peerTxEnable)
-	helloTx := make(chan HelloMsg)
+	helloTx := make(chan BackupMsg)
 	
 	go bcast.Transmitter(16569, helloTx)
 
 	go func() {
-		helloMsg := HelloMsg{"Fra main2.go from " + id, counter}
+		BackupMsg := BackupMsg{"From " + id, counter}
 		for {
-			helloMsg.Iter++
-			helloTx <- helloMsg
+			BackupMsg.Iter++
+			helloTx <- BackupMsg
 			time.Sleep(1 * time.Second)
-			fmt.Println("Count:", helloMsg.Iter)
+			fmt.Println("Count:", BackupMsg.Iter)
 		}
 	}()
-
-	fmt.Println("Started sending as primary")
+	fmt.Printf("\n\n")
+	fmt.Println("+-------------------------------------+")
+	fmt.Println("| IS PRIMARY: start transmitting data |")
+	fmt.Println("+-------------------------------------+")
+	fmt.Printf("\n")
 	for {
-		
+		// do nothing, looping as primary
 	}
 
 }
