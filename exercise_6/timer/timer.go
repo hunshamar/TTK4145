@@ -6,23 +6,12 @@ import "time"
 
 const _pollRate = 20 * time.Millisecond
 
-type timer_s struct{
+type Timer_s struct{
     start_time_ms int64 
     run_time_ms int64 
 }
 
-var t = timer_s{0,0}
-var w = timer_s{0,0}
-
-func Start(run_time_ms int64) {
-        
-    t.start_time_ms = time.Now().UnixNano() / int64(time.Millisecond)
-
-    t.run_time_ms = run_time_ms
-
-}
-
-func WatchdogTimedOut() bool{
+func WatchdogTimedOut(w* Timer_s) bool{
 
 
     if ((w.start_time_ms + w.run_time_ms) < (time.Now().UnixNano() / int64(time.Millisecond))){
@@ -31,37 +20,22 @@ func WatchdogTimedOut() bool{
     return false
 }
 
-/*
-func PollTimer(receiver chan<- bool){
-	prev := false
-	for {
-		time.Sleep(_pollRate)
-		v := TimedOut()
-		if v != prev {
-			receiver <- v
-		}
-		prev = v
-	}
-}*/
 
-func WatchdogInit(time_ms int64){
+func WatchdogInit(time_ms int64, w* Timer_s){
 	w.start_time_ms = time.Now().UnixNano() / int64(time.Millisecond)
 	w.run_time_ms = time_ms
 }
 
-func WatchdogPoll(receiver chan<- bool){
-
-
-
+func WatchdogPoll(receiver chan<- bool, w* Timer_s){
 	for {
 		time.Sleep(_pollRate)
-		v := WatchdogTimedOut()
+		v := WatchdogTimedOut(w)
 		if v == true {
 			receiver <- true
 		}
 	}
 }
 
-func WatchdogReset(){
+func WatchdogReset(w* Timer_s){
 	w.start_time_ms = time.Now().UnixNano() / int64(time.Millisecond)	
 }

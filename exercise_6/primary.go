@@ -18,46 +18,7 @@ type BackupMsg struct {
 	Iter    int
 }
 
-func main() {
-
-	counter := 0
-
-	timer.WatchdogInit(3000)
-
-
-	watchdogTimedOut := make(chan bool)
-	helloRx := make(chan BackupMsg)
-
-	/* ----------------- Start receiving -------------------*/
-
-	go bcast.Receiver(16569, helloRx)
-	go timer.WatchdogPoll(watchdogTimedOut)
-
-	fmt.Printf("\n\n")
-	fmt.Println("+-------------------------------------+")
-	fmt.Println("| IS BACKUP:  starting receiving data |")
-	fmt.Println("+-------------------------------------+")
-	fmt.Printf("\n")
-
-	exit := false
-	for !exit{
-		select {
-
-		case a := <-helloRx:
-			counter = a.Iter
-			timer.WatchdogReset()
-			
-		case <-watchdogTimedOut:
-			fmt.Printf("Watchdog timed out\n")
-			exit = true
-		}
-	}
-	fmt.Println("PRIMARY has crashed, become PRIMARY and open new BACKUP")
-
-
-
-	
-	/* ----------------- Spawn backup -------------------*/
+func spawnBackup(){
 	cmd := exec.Command("gnome-terminal", "--window", "-x","go", "run", "primary.go") 
 	cmd.Stderr = os.Stderr
 
@@ -66,9 +27,49 @@ func main() {
 	if err != nil{
 		log.Fatal(err)
 	}
+}
+
+func main() {
+
+	counter := 0
+	watchdogTimer1 := timer.Timer_s{}
+	timer.WatchdogInit(3000,&watchdogTimer1)
+
+	watchdogTimedOut := make(chan bool)
+	helloRx := make(chan BackupMsg)
+
+	/* ----------------- Start receiving -------------------*/
+
+	go bcast.Receiver(16569, helloRx)
+	go timer.WatchdogPoll(watchdogTimedOut,&watchdogTimer1)
+
+	fmt.Printf("\n\n")
+	fmt.Println("+-------------------------------------+")
+	fmt.Println("| IS BACKUP:  starting receiving data |")
+	fmt.Println("+-------------------------------------+")
+	fmt.Printf("\n")
+
+	runAsBackUp := true
+	for runAsBackUp{
+		select {
+		case a := <-helloRx:
+			counter = a.Iter
+			timer.WatchdogReset(&watchdogTimer1)
+			
+		case <-watchdogTimedOut:
+			fmt.Printf("Watchdog timed out\n")
+			runAsBackUp = false
+		}
+	}
+	fmt.Println("PRIMARY has crashed, become PRIMARY and open new BACKUP")
 
 
 
+	
+	/* ----------------- Spawn backup -------------------*/
+	spawnBackup()
+
+	
 	/* ----------------- Start transmiting -------------------*/
 	
 	var id string
