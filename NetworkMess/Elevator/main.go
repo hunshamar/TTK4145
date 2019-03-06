@@ -11,12 +11,42 @@ import (
 	"../dataTypes"
 )
 
+
+/*
+type ShortMessage struct {
+	floor int
+	dir   MotorDirection
+	local_orders [3][4]int
+	state ElevatorState
+}
+*/
+
+
+
+
+
+
 // We define some custom struct to send over the network.
 // Note that all members we want to transmit must be public. Any private members
 //  will be received as zero-values.
 
 
 func main() {
+
+	var a =[3][4]int{
+		{0, 0, 0, 0}, //up
+		{0, 1, 0, 0}, // down
+		{0, 0, 0, 0}}  //cab
+
+	Info := dataTypes.ElevatorInfo{
+		Floor: 0,
+		Dir: dataTypes.MD_Stop,
+		Local_orders: a,
+		State: dataTypes.Idle}
+
+
+
+
 	// Our id can be anything. Here we pass it on the command line, using
 	//  `go run main.go -id=our_id`
 	var id string
@@ -45,8 +75,8 @@ func main() {
 	go peers.Receiver(15647, peerUpdateCh)
 
 	// We make channels for sending and receiving our custom data types
-	helloTx := make(chan dataTypes.HelloMsg)
-	helloRx := make(chan dataTypes.HelloMsg)
+	helloTx := make(chan dataTypes.ShortMessage)
+	helloRx := make(chan dataTypes.LongMessage)
 	// ... and start the transmitter/receiver pair on some port
 	// These functions can take any number of channels! It is also possible to
 	//  start multiple transmitters/receivers on the same port.
@@ -55,9 +85,9 @@ func main() {
 
 	// The example message. We just send one of these every second.
 	go func() {
-		HelloMsg := dataTypes.HelloMsg{"Hello from elevator", 0}
+		HelloMsg := dataTypes.ShortMessage{Info}
+
 		for {
-			HelloMsg.Iter++
 			helloTx <- HelloMsg
 			time.Sleep(1 * time.Second)
 		}
@@ -73,7 +103,8 @@ func main() {
 			fmt.Printf("  Lost:     %q\n", p.Lost)
 
 		case a := <-helloRx:
-			fmt.Printf("Received: %#v\n", a)
+			fmt.Println("Recieved from master")
+			dataTypes.ElevatorInfoPrint(a.Elevator1)
 		}
 	}
 }
