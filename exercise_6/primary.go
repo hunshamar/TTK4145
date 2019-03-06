@@ -36,11 +36,11 @@ func main() {
 	timer.WatchdogInit(3000,&watchdogTimer1)
 
 	watchdogTimedOut := make(chan bool)
-	helloRx := make(chan BackupMsg)
+	Rx := make(chan BackupMsg)
 
 	/* ----------------- Start receiving -------------------*/
 
-	go bcast.Receiver(16569, helloRx)
+	go bcast.Receiver(16569, Rx)
 	go timer.WatchdogPoll(watchdogTimedOut,&watchdogTimer1)
 
 	fmt.Printf("\n\n")
@@ -52,8 +52,8 @@ func main() {
 	runAsBackUp := true
 	for runAsBackUp{
 		select {
-		case a := <-helloRx:
-			counter = a.Iter
+		case a := <-Rx:
+			counter = a.Iter	
 			timer.WatchdogReset(&watchdogTimer1)
 			
 		case <-watchdogTimedOut:
@@ -62,7 +62,6 @@ func main() {
 		}
 	}
 	fmt.Println("PRIMARY has crashed, become PRIMARY and open new BACKUP")
-
 
 
 	
@@ -88,15 +87,15 @@ func main() {
 
 	//peerTxEnable := make(chan bool)
 	//go peers.Transmitter(15647, id, peerTxEnable)
-	helloTx := make(chan BackupMsg)
+	Tx := make(chan BackupMsg)
 	
-	go bcast.Transmitter(16569, helloTx)
+	go bcast.Transmitter(16569, Tx)
 
 	go func() {
 		BackupMsg := BackupMsg{"From " + id, counter}
 		for {
+			Tx <- BackupMsg
 			BackupMsg.Iter++
-			helloTx <- BackupMsg
 			time.Sleep(1 * time.Second)
 			fmt.Println("Count:", BackupMsg.Iter)
 		}
@@ -109,6 +108,4 @@ func main() {
 	for {
 		// do nothing, looping as primary
 	}
-
 }
-
