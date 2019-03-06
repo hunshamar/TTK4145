@@ -1,14 +1,15 @@
 package main
 
 import (
-	"./network/bcast"
-	"./network/localip"
-	"./network/peers"
+	"../network/bcast"
+	"../network/localip"
+	"../network/peers"
 	"flag"
 	"fmt"
 	"os"
-	"time"
+	//"time"
 	"../dataTypes"
+	"./masterCom"
 )
 
 
@@ -71,6 +72,9 @@ func main() {
 	// We can disable/enable the transmitter after it has been started.
 	// This could be used to signal that we are somehow "unavailable".
 	peerTxEnable := make(chan bool)
+
+	infoToMaster := make(chan dataTypes.ElevatorInfo)
+
 	go peers.Transmitter(15647, id, peerTxEnable)
 	go peers.Receiver(15647, peerUpdateCh)
 
@@ -80,18 +84,21 @@ func main() {
 	// ... and start the transmitter/receiver pair on some port
 	// These functions can take any number of channels! It is also possible to
 	//  start multiple transmitters/receivers on the same port.
-	go bcast.Transmitter(16560, helloTx)
+	go bcast.Transmitter(16561, helloTx)
 	go bcast.Receiver(16569, helloRx)
 
 	// The example message. We just send one of these every second.
-	go func() {
+
+
+	go masterCom.Transmit(helloTx, infoToMaster)
+	/*go func() {
 		HelloMsg := dataTypes.ShortMessage{Info}
 
 		for {
 			helloTx <- HelloMsg
 			time.Sleep(1 * time.Second)
 		}
-	}()
+	}()*/
 
 	fmt.Println("Started")
 	for {
@@ -104,7 +111,16 @@ func main() {
 
 		case a := <-helloRx:
 			fmt.Println("Recieved from master")
+
+			fmt.Println("\nElevator1:")
 			dataTypes.ElevatorInfoPrint(a.Elevator1)
+			fmt.Println("\nElevator2:")
+			dataTypes.ElevatorInfoPrint(a.Elevator2)
+			fmt.Println("\nElevator3:")
+			dataTypes.ElevatorInfoPrint(a.Elevator3)
+
+
 		}
+		infoToMaster <- Info
 	}
 }

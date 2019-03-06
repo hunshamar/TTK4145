@@ -1,14 +1,15 @@
 package main
 
 import (
-	"./network/bcast"
-	"./network/localip"
-	"./network/peers"
+	"../network/bcast"
+	"../network/localip"
+	"../network/peers"
 	"flag"
 	"fmt"
 	"os"
-	"time"
+	//"time"
 	"../dataTypes"
+	"./elevatorCom"
 )
 
 /*
@@ -28,11 +29,37 @@ type ShortMessage struct {
 //  will be received as zero-values.
 
 
-func updateTo3(ordersArr* [3][4]int){
-	for i := 0; i < 3; i++{
-		for j:= 0; j < 4; j++{
-			if ordersArr[i][j] == 1{
-				ordersArr[i][j] = 3
+func updateTo3(ordersArr1* [3][4]int,ordersArr2* [3][4]int,ordersArr3* [3][4]int, elevator int){
+
+	switch elevator{
+	case 1:
+		for i := 0; i < 3; i++{
+			for j:= 0; j < 4; j++{
+				if ordersArr1[i][j] == 1{
+					ordersArr1[i][j] = 3
+					ordersArr2[i][j] = 2
+					ordersArr3[i][j] = 2
+				}
+			}
+		}
+	case 2:
+		for i := 0; i < 3; i++{
+			for j:= 0; j < 4; j++{
+				if ordersArr2[i][j] == 1{
+					ordersArr1[i][j] = 2
+					ordersArr2[i][j] = 3
+					ordersArr3[i][j] = 2
+				}
+			}
+		}
+	case 3:
+		for i := 0; i < 3; i++{
+			for j:= 0; j < 4; j++{
+				if ordersArr3[i][j] == 1{
+					ordersArr1[i][j] = 2
+					ordersArr2[i][j] = 3
+					ordersArr3[i][j] = 2
+				}
 			}
 		}
 	}
@@ -43,8 +70,10 @@ func main() {
 	// Our id can be anything. Here we pass it on the command line, using
 	//  `go run main.go -id=our_id`
 
-	Elevator1 := dataTypes.ElevatorInfo{}
-	
+	elevator1 := dataTypes.ElevatorInfo{}
+	elevator2 := dataTypes.ElevatorInfo{}
+	elevator3 := dataTypes.ElevatorInfo{}
+
 
 
 	var id string
@@ -73,23 +102,24 @@ func main() {
 	go peers.Receiver(15647, peerUpdateCh)
 
 	// We make channels for sending and receiving our custom data types
-	helloTx := make(chan dataTypes.LongMessage)
-	helloRx := make(chan dataTypes.ShortMessage)
+	TXToAll := make(chan dataTypes.LongMessage)
+	RxElev1 := make(chan dataTypes.ShortMessage)
+	RxElev2 := make(chan dataTypes.ShortMessage)
+	RxElev3 := make(chan dataTypes.ShortMessage)
+
+
 	// ... and start the transmitter/receiver pair on some port
 	// These functions can take any number of channels! It is also possible to
 	//  start multiple transmitters/receivers on the same port.
-	go bcast.Transmitter(16569, helloTx)
-	go bcast.Receiver(16560, helloRx)
+	go bcast.Transmitter(16569, TXToAll)
+	go bcast.Receiver(16561, RxElev1)
+	go bcast.Receiver(16562, RxElev2)
+	go bcast.Receiver(16563, RxElev3)
 
 	// The example message. We just send one of these every second.
-	go func() {
-		for {
-			HelloMsg := dataTypes.LongMessage{Elevator1, Elevator1, Elevator1}
-			fmt.Println("Sending to elevator:",HelloMsg.Elevator1.Local_orders[1][1])
-			helloTx <- HelloMsg
-			time.Sleep(1 * time.Second)
-		}
-	}()
+	infoToElevators := make(chan dataTypes.LongMessage)
+
+	go elevatorCom.Transmit(TXToAll, infoToElevators)
 
 	fmt.Println("Started")
 	for {
@@ -100,14 +130,23 @@ func main() {
 			fmt.Printf("  New:      %q\n", p.New)
 			fmt.Printf("  Lost:     %q\n", p.Lost)
 
-		case a := <-helloRx:
+		case a := <-RxElev1:
+			elevator1 = a.Elevator
+			updateTo3(&elevator1.Local_orders,&elevator2.Local_orders,&elevator3.Local_orders,1)
+			dataTypes.ElevatorInfoPrint(elevator1)
+
+
+		case b := <-RxElev2:
+			elevator2 = b.Elevator
+			updateTo3(&elevator1.Local_orders,&elevator2.Local_orders,&elevator3.Local_orders,2)
+		case c := <-RxElev3:
 			//fmt.Printf("Received: %#v\n", a)
 			fmt.Println("Recieved from elevator")
 			//dataTypes.ElevatorInfoPrint(a.Elevator)
-			Elevator1 = a.Elevator
-			updateTo3(&Elevator1.Local_orders)
-			dataTypes.ElevatorInfoPrint(Elevator1)
-			fmt.Println("Should be sending to elevator:",Elevator1.Local_orders[1][1])
+			elevator3 = c.Elevator
+			updateTo3(&elevator1.Local_orders,&elevator2.Local_orders,&elevator3.Local_orders,3)
+			dataTypes.ElevatorInfoPrint(elevator3)
 		}
+		infoToElevators <- dataTypes.LongMessage{elevator1, elevator2, elevator3}
 	}
 }
