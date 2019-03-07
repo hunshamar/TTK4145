@@ -41,7 +41,7 @@ func main() {
 
 	Info := dataTypes.ElevatorInfo{
 		Floor: 0,
-		Dir: dataTypes.MD_Stop,
+		Dir: dataTypes.D_Stop,
 		Local_orders: a,
 		State: dataTypes.Idle}
 

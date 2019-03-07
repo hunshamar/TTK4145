@@ -10,11 +10,11 @@ const (
 	DoorOpen = 2
 )
 
-type MotorDirection int
+type Direction int
 const (
-	MD_Up                  = 1
-	MD_Down                = -1
-	MD_Stop                = 0
+	D_Up                  = 1
+	D_Down                = -1
+	D_Stop                = 0
 )
 
 type ButtonType int
@@ -31,8 +31,8 @@ type ButtonEvent struct {
 
 type ElevatorInfo struct{
 	Floor int
-	Dir   MotorDirection
-	Local_orders [3][4]int
+	CurrentDirection   Direction
+	LocalOrders [3][4]int
 	State ElevatorState
 }
 
@@ -54,8 +54,8 @@ type HelloMsg struct {
 func ElevatorInfoPrint(EI ElevatorInfo){
 	fmt.Println("----------------------")
 	fmt.Println("Floor:",EI.Floor) 
-	fmt.Println("Direction:",EI.Dir) 
-	fmt.Println("Orders:",EI.Local_orders) 
+	fmt.Println("Direction:",EI.CurrentDirection) 
+	fmt.Println("Orders:",EI.LocalOrders) 
 	fmt.Println("State:",EI.State) 
 	fmt.Println("----------------------")
 }

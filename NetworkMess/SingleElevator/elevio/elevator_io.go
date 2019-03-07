@@ -4,6 +4,7 @@ import "time"
 import "sync"
 import "net"
 import "fmt"
+import "../../dataTypes"
 
 
 
@@ -13,27 +14,6 @@ var _initialized bool = false
 var _numFloors int = 4
 var _mtx sync.Mutex
 var _conn net.Conn
-
-type MotorDirection int
-
-const (
-	MD_Up   			   =  1
-	MD_Down                = -1
-	MD_Stop                =  0
-)
-
-type ButtonType int
-
-const (
-	BT_HallUp    		   = 0
-	BT_HallDown            = 1
-	BT_Cab                 = 2
-)
-
-type ButtonEvent struct {
-	Floor  int
-	Button ButtonType
-}
 
 
 
@@ -57,13 +37,13 @@ func Init(addr string, numFloors int) {
 
 
 
-func SetMotorDirection(dir MotorDirection) {
+func SetMotorDirection(dir dataTypes.Direction) {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{1, byte(dir), 0, 0})
 }
 
-func SetButtonLamp(button ButtonType, floor int, value bool) {
+func SetButtonLamp(button dataTypes.ButtonType, floor int, value bool) {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{2, byte(button), byte(floor), toByte(value)})
@@ -89,15 +69,15 @@ func SetStopLamp(value bool) {
 
 
 
-func PollButtons(receiver chan<- ButtonEvent) {
+func PollButtons(receiver chan<- dataTypes.ButtonEvent) {
 	prev := make([][3]bool, _numFloors)
 	for {
 		time.Sleep(_pollRate)
 		for f := 0; f < _numFloors; f++ {
-			for b := ButtonType(0); b < 3; b++ {
+			for b := dataTypes.ButtonType(0); b < 3; b++ {
 				v := getButton(b, f)
 				if v != prev[f][b] && v != false {
-					receiver <- ButtonEvent{f, ButtonType(b)}
+					receiver <- dataTypes.ButtonEvent{f, dataTypes.ButtonType(b)}
 				}
 				prev[f][b] = v
 			}
@@ -148,7 +128,7 @@ func PollObstructionSwitch(receiver chan<- bool) {
 
 
 
-func getButton(button ButtonType, floor int) bool {
+func getButton(button dataTypes.ButtonType, floor int) bool {
 	_mtx.Lock()
 	defer _mtx.Unlock()
 	_conn.Write([]byte{6, byte(button), byte(floor), 0})

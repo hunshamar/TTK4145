@@ -8,7 +8,7 @@ import "./FSM"
 
 func main(){
 
-    FSM.Loop()
+    FSM.StateMachine()
 
 
     //go timer.Start(door_timer, run_time_ms)
