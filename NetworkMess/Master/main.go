@@ -16,7 +16,7 @@ import (
 type ShortMessage struct {
 	floor int
 	dir   MotorDirection
-	local_orders [3][4]int
+	LocalOrders [3][4]int
 	state ElevatorState
 }
 */
@@ -132,19 +132,19 @@ func main() {
 
 		case a := <-RxElev1:
 			elevator1 = a.Elevator
-			updateTo3(&elevator1.Local_orders,&elevator2.Local_orders,&elevator3.Local_orders,1)
+			updateTo3(&elevator1.LocalOrders,&elevator2.LocalOrders,&elevator3.LocalOrders,1)
 			dataTypes.ElevatorInfoPrint(elevator1)
 
 
 		case b := <-RxElev2:
 			elevator2 = b.Elevator
-			updateTo3(&elevator1.Local_orders,&elevator2.Local_orders,&elevator3.Local_orders,2)
+			updateTo3(&elevator1.LocalOrders,&elevator2.LocalOrders,&elevator3.LocalOrders,2)
 		case c := <-RxElev3:
 			//fmt.Printf("Received: %#v\n", a)
 			fmt.Println("Recieved from elevator")
 			//dataTypes.ElevatorInfoPrint(a.Elevator)
 			elevator3 = c.Elevator
-			updateTo3(&elevator1.Local_orders,&elevator2.Local_orders,&elevator3.Local_orders,3)
+			updateTo3(&elevator1.LocalOrders,&elevator2.LocalOrders,&elevator3.LocalOrders,3)
 			dataTypes.ElevatorInfoPrint(elevator3)
 		}
 		infoToElevators <- dataTypes.LongMessage{elevator1, elevator2, elevator3}

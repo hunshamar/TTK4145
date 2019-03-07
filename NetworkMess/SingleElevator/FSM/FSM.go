@@ -3,17 +3,18 @@ package FSM
 
 import(
 	"fmt"
+	"time"
 	"../orders"
 	"../elevio"
 	"../../timer"
 	"../buttons"
 	"../../dataTypes"
-	"../network/bcast"
-	"../network/localip"
-	"../network/peers"
+	"../../network/bcast"
+	"../../network/localip"
+	"../../network/peers"
 	"flag"
 	"os"
-	"./masterCom"
+	"../masterCom"
 )
 
 
@@ -105,16 +106,6 @@ func StateMachine(){
 	/* ---------- */
 
 
-
-
-
-
-
-
-
-
-
-
 	numFloors := 4
 	
     //buttons.Pr()
@@ -131,8 +122,11 @@ func StateMachine(){
 	timedOut              := make(chan bool)
 
 	/* -- Network -- */
-
-
+	peerUpdateCh := make(chan peers.PeerUpdate)
+	peerTxEnable := make(chan bool)
+	infoToMaster := make(chan dataTypes.ElevatorInfo)
+	helloTx := make(chan dataTypes.ShortMessage)
+	helloRx := make(chan dataTypes.LongMessage)
 	/* ---  -- -- - -*/ 
 
 	go elevio.PollButtons(buttonPress)
@@ -143,9 +137,22 @@ func StateMachine(){
 	go timer.PollTimer(timedOut)
 
 	/* -- Network -- */
-
-
+	go bcast.Transmitter(16561, helloTx)
+	go bcast.Receiver(16569, helloRx)
+	go masterCom.Transmit(helloTx, infoToMaster)
+	go peers.Transmitter(15647, id, peerTxEnable)
+	go peers.Receiver(15647, peerUpdateCh)
+	
 	/* ---  -- -- - -*/ 
+
+
+	go func(){
+		
+		for{
+		infoToMaster <- elevator
+		time.Sleep(10 * time.Millisecond)
+		}
+	 }()
 
 	for{
 		select{
@@ -156,7 +163,7 @@ func StateMachine(){
 				case dataTypes.BT_HallUp:
 					fallthrough
 				case dataTypes.BT_HallDown:
-					elevator.LocalOrders[b.Button][b.Floor] = 3 // To two later
+					elevator.LocalOrders[b.Button][b.Floor] = 1 // To two later
 				}
 				/*switch?  */
 				if orders.StopHere(elevator) && elevator.State != dataTypes.S_Moving{
@@ -185,12 +192,52 @@ func StateMachine(){
 
 			case <-obstruction:
 				dataTypes.ElevatorInfoPrint(elevator)
+
+			/* -- Network -- */
+			case p := <-peerUpdateCh:
+				fmt.Printf("Peer update:\n")
+				fmt.Printf("  Peers:    %q\n", p.Peers)
+				fmt.Printf("  New:      %q\n", p.New)
+				fmt.Printf("  Lost:     %q\n", p.Lost)
+	
+			case a := <-helloRx:
+				fmt.Println("Recieved from master")
+	
+				//fmt.Println("\nElevator1:")
+				//dataTypes.ElevatorInfoPrint(a.Elevator1)
+
+				if orders.StopHere(elevator) && elevator.State != dataTypes.S_Moving{
+					HandleOrder()									
+				}else if elevator.State == dataTypes.S_Idle{
+					updateDirection()
+				}
+
+				elevator.LocalOrders = newOrdersFromMaster(elevator, a.Elevator1.LocalOrders) // Gi nytt navn lol
+				
+				elevatorInfo <-elevator
 				
 		}
+		
 	}
 
 	
 }
 
+func newOrdersFromMaster(elevator dataTypes.ElevatorInfo, ordersFromMaster [3][4]int) [3][4]int{
+	localOrders := elevator.LocalOrders
+	for floor := 0; floor < 4; floor++{
+		for button := 0; button < 2; button++{
+			if localOrders[button][floor] == 3 || localOrders[button][floor] == 2{
+				localOrders[button][floor]  = ordersFromMaster[button][floor] 
+			}
+
+			if localOrders[button][floor] == 1 && (ordersFromMaster[button][floor] == 2 || ordersFromMaster[button][floor] == 3) {
+				localOrders[button][floor] = ordersFromMaster[button][floor]
+			}
+		}
+	}
+
+	return localOrders
+}
 
 

@@ -14,7 +14,7 @@ func Transmit(TX chan<- dataTypes.LongMessage, LongMessage <-chan dataTypes.Long
 		for {
 			ToElevators := <-LongMessage
 			TX <- ToElevators
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 }
 
