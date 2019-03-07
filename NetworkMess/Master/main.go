@@ -10,6 +10,7 @@ import (
 	//"time"
 	"../dataTypes"
 	"./elevatorCom"
+	"time"
 )
 
 /*
@@ -40,6 +41,11 @@ func updateTo3(ordersArr1* [3][4]int,ordersArr2* [3][4]int,ordersArr3* [3][4]int
 					ordersArr2[i][j] = 2
 					ordersArr3[i][j] = 2
 				}
+				if ordersArr1[i][j] == 0{
+					ordersArr1[i][j] = 0
+					ordersArr2[i][j] = 0
+					ordersArr3[i][j] = 0
+				}
 			}
 		}
 	case 2:
@@ -49,6 +55,11 @@ func updateTo3(ordersArr1* [3][4]int,ordersArr2* [3][4]int,ordersArr3* [3][4]int
 					ordersArr1[i][j] = 2
 					ordersArr2[i][j] = 3
 					ordersArr3[i][j] = 2
+				}
+				if ordersArr2[i][j] == 0{
+					ordersArr1[i][j] = 0
+					ordersArr2[i][j] = 0
+					ordersArr3[i][j] = 0
 				}
 			}
 		}
@@ -121,6 +132,15 @@ func main() {
 
 	go elevatorCom.Transmit(TXToAll, infoToElevators)
 
+	go func(){
+		
+		for{
+			infoToElevators <- dataTypes.LongMessage{elevator1, elevator2, elevator3}
+		time.Sleep(10 * time.Millisecond)
+		}
+	 }()
+
+
 	fmt.Println("Started")
 	for {
 		select {
@@ -132,13 +152,23 @@ func main() {
 
 		case a := <-RxElev1:
 			elevator1 = a.Elevator
+			if elevator1.LocalOrders[1][1] == 1{
+				fmt.Println("JAJAJA \n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+			}
 			updateTo3(&elevator1.LocalOrders,&elevator2.LocalOrders,&elevator3.LocalOrders,1)
-			dataTypes.ElevatorInfoPrint(elevator1)
-
+			if elevator1.LocalOrders[1][1] == 3{
+				fmt.Println("NEINEINEI \n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+			}
 
 		case b := <-RxElev2:
 			elevator2 = b.Elevator
+			if elevator2.LocalOrders[1][1] == 1{
+				fmt.Println("JAJAJA \n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+			}
 			updateTo3(&elevator1.LocalOrders,&elevator2.LocalOrders,&elevator3.LocalOrders,2)
+			if elevator2.LocalOrders[1][1] == 3{
+				fmt.Println("NEINEINEI \n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+			}
 		case c := <-RxElev3:
 			//fmt.Printf("Received: %#v\n", a)
 			fmt.Println("Recieved from elevator")
@@ -147,6 +177,6 @@ func main() {
 			updateTo3(&elevator1.LocalOrders,&elevator2.LocalOrders,&elevator3.LocalOrders,3)
 			dataTypes.ElevatorInfoPrint(elevator3)
 		}
-		infoToElevators <- dataTypes.LongMessage{elevator1, elevator2, elevator3}
+		
 	}
 }
