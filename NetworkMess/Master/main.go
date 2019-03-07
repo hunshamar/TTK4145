@@ -68,8 +68,13 @@ func updateTo3(ordersArr1* [3][4]int,ordersArr2* [3][4]int,ordersArr3* [3][4]int
 			for j:= 0; j < 4; j++{
 				if ordersArr3[i][j] == 1{
 					ordersArr1[i][j] = 2
-					ordersArr2[i][j] = 3
-					ordersArr3[i][j] = 2
+					ordersArr2[i][j] = 2
+					ordersArr3[i][j] = 3
+				}
+				if ordersArr3[i][j] == -1{
+					ordersArr1[i][j] = 0
+					ordersArr2[i][j] = 0
+					ordersArr3[i][j] = 0
 				}
 			}
 		}
@@ -137,6 +142,7 @@ func main() {
 		for{
 			infoToElevators <- dataTypes.LongMessage{elevator1, elevator2, elevator3}
 		time.Sleep(250 * time.Millisecond)
+		dataTypes.ElevatorInfoPrint(elevator3)
 		}
 	 }()
 

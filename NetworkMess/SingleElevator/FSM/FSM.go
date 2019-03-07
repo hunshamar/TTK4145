@@ -86,8 +86,9 @@ func updateDirection(){
 	}
 }
 
-func StateMachine(){
+func StateMachine(elevatorNumber int){
 
+	
 
 	/* ---------- */
 
@@ -137,7 +138,7 @@ func StateMachine(){
 	go timer.PollTimer(timedOut)
 
 	/* -- Network -- */
-	go bcast.Transmitter(16561, helloTx)
+	go bcast.Transmitter(16560 + elevatorNumber, helloTx)
 	go bcast.Receiver(16569, helloRx)
 	go masterCom.Transmit(helloTx, infoToMaster)
 	go peers.Transmitter(15647, id, peerTxEnable)
@@ -201,10 +202,23 @@ func StateMachine(){
 				fmt.Printf("  Lost:     %q\n", p.Lost)
 	
 			case a := <-helloRx:
+
+
+				var elevatorNumInfo dataTypes.ElevatorInfo
+				switch elevatorNumber{
+				case 1:
+					elevatorNumInfo = a.Elevator1
+				case 2:
+					elevatorNumInfo = a.Elevator2
+				case 3:
+					elevatorNumInfo = a.Elevator3
+				}
+
+
 				fmt.Println("Recieved from master")
 	
 				//fmt.Println("\nElevator1:")
-				dataTypes.ElevatorInfoPrint(a.Elevator1)
+				dataTypes.ElevatorInfoPrint(elevatorNumInfo)
 
 				if orders.StopHere(elevator) && elevator.State != dataTypes.S_Moving{
 					HandleOrder()									
@@ -212,7 +226,7 @@ func StateMachine(){
 					updateDirection()
 				}
 
-				elevator.LocalOrders = newOrdersFromMaster(elevator, a.Elevator1.LocalOrders) // Gi nytt navn lol
+				elevator.LocalOrders = newOrdersFromMaster(elevator, elevatorNumInfo.LocalOrders) // Gi nytt navn lol
 				
 				elevatorInfo <-elevator
 				

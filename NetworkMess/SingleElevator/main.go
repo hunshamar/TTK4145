@@ -8,12 +8,9 @@ import "./FSM"
 
 func main(){
 
-    FSM.StateMachine()
+    FSM.StateMachine(1)
 
-
-
-
-    FSM.Init()
+    
 
 
 
