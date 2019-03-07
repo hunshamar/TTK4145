@@ -204,7 +204,7 @@ func StateMachine(){
 				fmt.Println("Recieved from master")
 	
 				//fmt.Println("\nElevator1:")
-				//dataTypes.ElevatorInfoPrint(a.Elevator1)
+				dataTypes.ElevatorInfoPrint(a.Elevator1)
 
 				if orders.StopHere(elevator) && elevator.State != dataTypes.S_Moving{
 					HandleOrder()									
@@ -227,16 +227,12 @@ func newOrdersFromMaster(elevator dataTypes.ElevatorInfo, ordersFromMaster [3][4
 	localOrders := elevator.LocalOrders
 	for floor := 0; floor < 4; floor++{
 		for button := 0; button < 2; button++{
-			if localOrders[button][floor] == 3 || localOrders[button][floor] == 2{
-				localOrders[button][floor]  = ordersFromMaster[button][floor] 
-			}
-
-			if localOrders[button][floor] == 1 && (ordersFromMaster[button][floor] == 2 || ordersFromMaster[button][floor] == 3) {
+			if !(localOrders[button][floor] == 1 && ordersFromMaster[button][floor] == 0) && !(localOrders[button][floor] == -1 && ordersFromMaster[button][floor] == 3) {
 				localOrders[button][floor] = ordersFromMaster[button][floor]
 			}
 		}
 	}
-
+	fmt.Println("Not 3?:", localOrders[1][1])
 	return localOrders
 }
 

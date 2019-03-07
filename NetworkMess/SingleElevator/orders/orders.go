@@ -46,11 +46,19 @@ func StopHere(elevator dataTypes.ElevatorInfo) bool{
 func ExecuteOrders(elevator dataTypes.ElevatorInfo) [3][4]int{
 	
 	localOrders := elevator.LocalOrders
-	for buttonType := 0; buttonType < 3; buttonType++{
+	for buttonType := 0; buttonType < 2; buttonType++{ // hall buttons
 		if (localOrders[buttonType][elevator.Floor] == 3){
-			localOrders[buttonType][elevator.Floor] = 0
+			localOrders[buttonType][elevator.Floor] = -1
 		}
 	}
+	if (localOrders[dataTypes.BT_Cab][elevator.Floor] == 3){
+		localOrders[dataTypes.BT_Cab][elevator.Floor] = 0
+	}
+
+		
+
+		
+
 	return localOrders
 }
 
