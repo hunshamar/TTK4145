@@ -11,27 +11,47 @@ func PrintOrders(elevator dataTypes.ElevatorInfo){
 }
 
 
-func ExecutableOnFloor(elevator dataTypes.ElevatorInfo,s int, floor int) bool{
-	state := s
-	switch state{
-	case 1:
-		if (elevator.LocalOrders[dataTypes.BT_Cab][floor] ==  3 || elevator.LocalOrders[dataTypes.BT_HallUp][floor] ==  3 || (elevator.LocalOrders[dataTypes.BT_HallDown][floor] ==  3 && !Above(elevator,floor) )){
-			return true
+func StopHere(elevator dataTypes.ElevatorInfo) bool{
+
+	floor := elevator.Floor
+
+	switch elevator.State{
+	case dataTypes.S_Moving:
+
+		if (elevator.CurrentDirection == dataTypes.D_Up){
+			if (elevator.LocalOrders[dataTypes.BT_Cab][floor] ==  3 || elevator.LocalOrders[dataTypes.BT_HallUp][floor] ==  3 || (elevator.LocalOrders[dataTypes.BT_HallDown][floor] ==  3 && !Above(elevator,floor) )){
+				fmt.Println("Yes stop here ")
+				return true
+			}
 		}
-	case -1:
-		if (elevator.LocalOrders[dataTypes.BT_Cab][floor] ==  3 || elevator.LocalOrders[dataTypes.BT_HallDown][floor] ==  3 || (elevator.LocalOrders[dataTypes.BT_HallUp][floor] ==  3 && !Below(elevator,floor) )){
-			return true
+		if (elevator.CurrentDirection == dataTypes.D_Down){
+			if (elevator.LocalOrders[dataTypes.BT_Cab][floor] ==  3 || elevator.LocalOrders[dataTypes.BT_HallDown][floor] ==  3 || (elevator.LocalOrders[dataTypes.BT_HallUp][floor] ==  3 && !Below(elevator,floor) )){
+				return true
+			}
 		}
-	case 0:
-		if (elevator.LocalOrders[dataTypes.BT_Cab][floor] ==  3 || elevator.LocalOrders[dataTypes.BT_HallDown][floor] ==  3 || elevator.LocalOrders[dataTypes.BT_HallUp][floor] ==  3 ){
-			return true
-		}
-	case 2:
+		
+
+		
+	case dataTypes.S_Idle:
+		fallthrough
+	case dataTypes.S_DoorOpen:
 		if (elevator.LocalOrders[dataTypes.BT_Cab][floor] ==  3 || elevator.LocalOrders[dataTypes.BT_HallDown][floor] ==  3 || elevator.LocalOrders[dataTypes.BT_HallUp][floor] ==  3 ){
 			return true
 		}
 	}
 	return false
+
+}
+
+func ExecuteOrders(elevator dataTypes.ElevatorInfo) [3][4]int{
+	
+	localOrders := elevator.LocalOrders
+	for buttonType := 0; buttonType < 3; buttonType++{
+		if (localOrders[buttonType][elevator.Floor] == 3){
+			localOrders[buttonType][elevator.Floor] = 0
+		}
+	}
+	return localOrders
 }
 
 

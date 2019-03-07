@@ -5,10 +5,22 @@ import "fmt"
 
 type ElevatorState int 
 const (
-	Idle = 0
-	Moving = 1
-	DoorOpen = 2
+	S_Idle = 0
+	S_Moving = 1
+	S_DoorOpen = 2
 )
+
+func stateToString(s ElevatorState) string{
+	switch s{
+	case S_Idle:
+		return "Idle"
+	case S_Moving:
+		return "Moving"
+	case S_DoorOpen:
+		return "Door Open"
+	}
+	return "Not defined"
+}
 
 type Direction int
 const (
@@ -23,6 +35,9 @@ const (
 	BT_HallDown            = 1
 	BT_Cab                 = 2
 )
+
+
+
 
 type ButtonEvent struct {
 	Floor  int
@@ -56,6 +71,6 @@ func ElevatorInfoPrint(EI ElevatorInfo){
 	fmt.Println("Floor:",EI.Floor) 
 	fmt.Println("Direction:",EI.CurrentDirection) 
 	fmt.Println("Orders:",EI.LocalOrders) 
-	fmt.Println("State:",EI.State) 
+	fmt.Println("State:", stateToString(EI.State)) 
 	fmt.Println("----------------------")
 }

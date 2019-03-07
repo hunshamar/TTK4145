@@ -1,12 +1,21 @@
 
 package FSM
 
-import "fmt"
-import "../orders"
-import "../elevio"
-import "../../timer"
-import "../buttons"
-import "../../dataTypes"
+import(
+	"fmt"
+	"../orders"
+	"../elevio"
+	"../../timer"
+	"../buttons"
+	"../../dataTypes"
+	"../network/bcast"
+	"../network/localip"
+	"../network/peers"
+	"flag"
+	"os"
+	"./masterCom"
+)
+
 
 
 var elevator dataTypes.ElevatorInfo
@@ -15,11 +24,12 @@ func Init(){
 	elevio.SetMotorDirection(dataTypes.D_Down)
 	for(elevio.GetFloor() == -1){
 		//Wait until reach floor below
+		fmt.Println("w")
 	}
 	elevator.Floor = elevio.GetFloor()
 	elevator.CurrentDirection = dataTypes.D_Stop 
 	elevator.LocalOrders = [3][4]int{{0,0,0,0},{0,0,0,0},{0,0,0,0}}
-	elevator.State = dataTypes.Idle
+	elevator.State = dataTypes.S_Idle
 
 	elevio.SetMotorDirection(elevator.CurrentDirection)
 	fmt.Println("Init complete")
@@ -59,13 +69,49 @@ func FindNextDirection(elevator dataTypes.ElevatorInfo) dataTypes.Direction{
 
 
 func HandleOrder(){
+	elevator.LocalOrders = orders.ExecuteOrders(elevator)
+	elevator.State = dataTypes.S_DoorOpen
+	elevator.CurrentDirection = dataTypes.D_Stop
+	elevio.SetMotorDirection(elevator.CurrentDirection)
 	timer.Start(3000)
 	elevio.SetDoorOpenLamp(true)
-	elevio.SetMotorDirection(dataTypes.D_Stop)
-	//orders.Remove(current_floor)
+}
+
+func updateDirection(){
+	elevator.CurrentDirection = FindNextDirection(elevator)
+	elevio.SetMotorDirection(elevator.CurrentDirection)
+	if elevator.CurrentDirection != dataTypes.D_Stop{
+		elevator.State = dataTypes.S_Moving
+	}
 }
 
 func StateMachine(){
+
+
+	/* ---------- */
+
+	var id string
+	flag.StringVar(&id, "id", "", "id of this peer")
+	flag.Parse()
+	if id == "" {
+		localIP, err := localip.LocalIP()
+		if err != nil {
+			fmt.Println(err)
+			localIP = "DISCONNECTED"
+		}
+		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
+	}
+
+	/* ---------- */
+
+
+
+
+
+
+
+
+
 
 
 
@@ -80,11 +126,26 @@ func StateMachine(){
     buttonPress           := make(chan dataTypes.ButtonEvent)
 	stopButtonPress       := make(chan bool)   
 	elevatorInfo          := make(chan dataTypes.ElevatorInfo)
-	orderToHandle         := make(chan bool)
+	floorSensor           := make(chan int)
+	obstruction           := make(chan bool)
+	timedOut              := make(chan bool)
+
+	/* -- Network -- */
+
+
+	/* ---  -- -- - -*/ 
 
 	go elevio.PollButtons(buttonPress)
 	go elevio.PollStopButton(stopButtonPress)
 	go buttons.MirrorOrders(elevatorInfo)
+	go elevio.PollFloorSensor(floorSensor)
+	go elevio.PollObstructionSwitch(obstruction)
+	go timer.PollTimer(timedOut)
+
+	/* -- Network -- */
+
+
+	/* ---  -- -- - -*/ 
 
 	for{
 		select{
@@ -95,59 +156,39 @@ func StateMachine(){
 				case dataTypes.BT_HallUp:
 					fallthrough
 				case dataTypes.BT_HallDown:
-					elevator.LocalOrders[b.Button][b.Floor] = 2
+					elevator.LocalOrders[b.Button][b.Floor] = 3 // To two later
+				}
+				/*switch?  */
+				if orders.StopHere(elevator) && elevator.State != dataTypes.S_Moving{
+					HandleOrder()									
+				}else if elevator.State == dataTypes.S_Idle{
+					updateDirection()
+				}
+				
+				elevatorInfo <-elevator
+				
+			case <-timedOut:
+				elevio.SetDoorOpenLamp(false)
+				updateDirection()
+				if elevator.CurrentDirection == dataTypes.D_Stop{
+					elevator.State = dataTypes.S_Idle
 				}
 
-				elevatorInfo <- elevator
-			case <-stopButtonPress:
+			case f := <-floorSensor:
+				elevator.Floor = f
+				elevio.SetFloorIndicator(elevator.Floor)
+				fmt.Println("Now on floor")
+				if orders.StopHere(elevator){
+					HandleOrder()
+				}
+				elevatorInfo <-elevator
+
+			case <-obstruction:
 				dataTypes.ElevatorInfoPrint(elevator)
 				
-			case <- orderToHandle:
-				fmt.Println("handle this")
 		}
 	}
-	
-	/*
-    drv_buttons := make(chan elevio.ButtonEvent)
-    floorSensor  := make(chan int)
-    drv_obstr   := make(chan bool)
-	drv_stop    := make(chan bool)   
-	drv_timer   := make(chan bool)
 
-    go elevio.PollButtons(drv_buttons)
-    go elevio.PollFloorSensor(floorSensor)
-    go elevio.PollObstructionSwitch(drv_obstr)
-	go elevio.PollStopButton(drv_stop)
-	go buttons.MirrorOrders()
-	go timer.PollTimer(drv_timer)
-
-	Init()
-
-	for {   
-
-
-	
-
-        select {
-		
-		case a := <- drv_timer: // timer out
-			
-
-        case a := <- drv_buttons: 
-           
-
-		case floor := <- floorSensor: // Nytt floor, kan jeg stoppe her?
-			
-
-
-        case a := <- drv_obstr:
-			
-        case a := <- drv_stop:
-			
-        }
-
-    }   
-	*/
 	
 }
 
