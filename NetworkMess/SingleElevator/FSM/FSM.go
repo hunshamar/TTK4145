@@ -10,10 +10,11 @@ import(
 	"../buttons"
 	"../../dataTypes"
 	"../../network/bcast"
-	"../../network/localip"
+	//"../../network/localip"
 	"../../network/peers"
-	"flag"
-	"os"
+	//"flag"
+	"strconv"
+	//"os"
 	"../masterCom"
 )
 
@@ -25,7 +26,7 @@ func Init(){
 	elevio.SetMotorDirection(dataTypes.D_Down)
 	for(elevio.GetFloor() == -1){
 		//Wait until reach floor below
-		fmt.Println("w")
+		
 	}
 	elevator.Floor = elevio.GetFloor()
 	elevator.CurrentDirection = dataTypes.D_Stop 
@@ -91,9 +92,11 @@ func StateMachine(elevatorNumber int){
 	
 
 	/* ---------- */
-
+	
 	var id string
-	flag.StringVar(&id, "id", "", "id of this peer")
+	
+	
+	/*flag.StringVar(&id, "id", "", "id of this peer")
 	flag.Parse()
 	if id == "" {
 		localIP, err := localip.LocalIP()
@@ -102,7 +105,7 @@ func StateMachine(elevatorNumber int){
 			localIP = "DISCONNECTED"
 		}
 		id = fmt.Sprintf("peer-%s-%d", localIP, os.Getpid())
-	}
+	}*/
 
 	/* ---------- */
 
@@ -111,8 +114,10 @@ func StateMachine(elevatorNumber int){
 	
     //buttons.Pr()
 
-    elevio.Init("localhost:15657", numFloors)
-    
+	fmt.Println("localhost:1565" +  strconv.Itoa(6+elevatorNumber))
+    elevio.Init("localhost:1565" +  strconv.Itoa(6+elevatorNumber), numFloors)
+	
+	
 	Init()
 
     buttonPress           := make(chan dataTypes.ButtonEvent)
@@ -158,6 +163,7 @@ func StateMachine(elevatorNumber int){
 	for{
 		select{
 			case b := <-buttonPress:
+				fmt.Println("Button pressed in elevator", elevatorNumber)
 				switch b.Button{
 				case dataTypes.BT_Cab:
 					elevator.LocalOrders[b.Button][b.Floor] = 3
@@ -185,7 +191,7 @@ func StateMachine(elevatorNumber int){
 			case f := <-floorSensor:
 				elevator.Floor = f
 				elevio.SetFloorIndicator(elevator.Floor)
-				fmt.Println("Now on floor")
+				fmt.Println("Elevator", elevatorNumber, "Now on floor", elevator.Floor)
 				if orders.StopHere(elevator){
 					HandleOrder()
 				}
@@ -218,7 +224,7 @@ func StateMachine(elevatorNumber int){
 				fmt.Println("Recieved from master")
 	
 				//fmt.Println("\nElevator1:")
-				dataTypes.ElevatorInfoPrint(elevatorNumInfo)
+				//dataTypes.ElevatorInfoPrint(elevatorNumInfo)
 
 				if orders.StopHere(elevator) && elevator.State != dataTypes.S_Moving{
 					HandleOrder()									
@@ -241,12 +247,23 @@ func newOrdersFromMaster(elevator dataTypes.ElevatorInfo, ordersFromMaster [3][4
 	localOrders := elevator.LocalOrders
 	for floor := 0; floor < 4; floor++{
 		for button := 0; button < 2; button++{
-			if !(localOrders[button][floor] == 1 && ordersFromMaster[button][floor] == 0) && !(localOrders[button][floor] == -1 && ordersFromMaster[button][floor] == 3) {
-				localOrders[button][floor] = ordersFromMaster[button][floor]
+
+			switch ordersFromMaster[button][floor]{
+			case 0:	
+				if localOrders[button][floor] != 1{
+					localOrders[button][floor] = ordersFromMaster[button][floor]
+				}
+			case 1:
+				fmt.Println("ERROR")
+			case 2:
+				fallthrough
+			case 3:
+				if (localOrders[button][floor] != -1){
+					localOrders[button][floor] = ordersFromMaster[button][floor]
+				}
 			}
 		}
 	}
-	fmt.Println("Not 3?:", localOrders[1][1])
 	return localOrders
 }
 

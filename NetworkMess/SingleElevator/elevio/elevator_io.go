@@ -32,6 +32,7 @@ func Init(addr string, numFloors int) {
 	if err != nil {
 		panic(err.Error())
 	}
+	fmt.Println("Initialized addr", addr)
 	_initialized = true
 }
 
