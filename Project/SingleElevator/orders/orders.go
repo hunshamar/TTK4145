@@ -14,6 +14,17 @@ func PrintOrders(elevator dataTypes.ElevatorInfo){
 const _numFloors int= config.NumFloors
 const _numOrderButtons int = config.NumOrderButtons
 
+func Add(elevator dataTypes.ElevatorInfo, button dataTypes.ButtonType, floor int ) [_numOrderButtons][_numFloors]int{
+	switch button{
+	case dataTypes.BT_Cab:
+		elevator.LocalOrders[button][floor] = dataTypes.O_Handle
+	case dataTypes.BT_HallUp:
+		fallthrough
+	case dataTypes.BT_HallDown:
+		elevator.LocalOrders[button][floor] = dataTypes.O_Received 
+	}
+	return elevator.LocalOrders
+}
 
 func Execute(elevator dataTypes.ElevatorInfo) [_numOrderButtons][_numFloors]int{
 	

@@ -1,30 +1,18 @@
 package costFunction
 
 import (
-    "../../SingleElevator/elevatorLogic"
-    "../../dataTypes"      
-    "../../config"
-    "../../SingleElevator/orders"
-    "fmt"
-    "os"
-  )
+  "../../SingleElevator/elevatorLogic"
+  "../../dataTypes"      
+  "../../config"
+  "../../SingleElevator/orders"
+  "os"
+)
 
-  const _numElevators int = config.NumElevators  
-  const _numFloors int    = config.NumFloors
-  const _numOrderButtons int = config.NumOrderButtons
+const _numElevators int = config.NumElevators  
+const _numFloors int    = config.NumFloors
+const _numOrderButtons int = config.NumOrderButtons
 
-/*
-func requests_ClearAtCurrentFloor(Elevator e, onFloor func(Button, int)) Elevator {
-  for btn := 0; btn < 4; btn++{
-    if (e.Requests[e.Floor][btn]){
-      e.Requests[e.Floor][btn] = 0
-      if (onFloor){
-        onFloor(btn, Floor)
-      }
-    }
-  }
-  return e
-}*/
+
 
 
 
@@ -42,7 +30,7 @@ func TimeToIdle(elevator dataTypes.ElevatorInfo) int{
 
   switch (elevator.State) {
   case dataTypes.S_Disconnected: 
-    return 100000000000000
+    return config.InfCost
   case dataTypes.S_Idle:
     elevator.CurrentDirection = elevatorLogic.FindNextDirection(elevator)
     if (elevator.CurrentDirection == dataTypes.S_Idle) { //S_Stop
@@ -50,29 +38,15 @@ func TimeToIdle(elevator dataTypes.ElevatorInfo) int{
     }
   case dataTypes.S_Moving:
     duration += config.ElevatorTravelTimeMs/2
-	elevator.Floor += int(elevator.CurrentDirection)
-
-
-	
+	  elevator.Floor += int(elevator.CurrentDirection)
   case dataTypes.S_DoorOpen:
-	duration += config.DoorOpenTimeMs/2
-	//duration += 3000
+  	duration += config.DoorOpenTimeMs/2
   }
-
-  // hva sendes inn?
-
-
-
 
   
   
   a := 0
   for {
-
-	//if (elevator.Floor == 0 && elevator.CurrentDirection == -1 && elevator.State == dataTypes.S_Moving){
-		
-	//}
-	
 
 	if elevatorLogic.ShouldStopHere(elevator){
 		elevator.LocalOrders = orders.Execute(elevator)
@@ -83,12 +57,7 @@ func TimeToIdle(elevator dataTypes.ElevatorInfo) int{
 		return duration
 	}
 
-	a++
 
-    if a == 98{
-      fmt.Println("Should staop on this")
-      dataTypes.ElevatorInfoPrint(elevator)
-    }
 
 	elevator.CurrentDirection = elevatorLogic.FindNextDirection(elevator)
 	if elevator.CurrentDirection != dataTypes.D_Stop{
@@ -101,45 +70,14 @@ func TimeToIdle(elevator dataTypes.ElevatorInfo) int{
 	
 
 	
+  a++
 
-    if (a > 100){
-      println("Error evig while")
-      os.Exit(0)
-    }
-    
+  if (a > 100){
+    println("Error evig while")
+    os.Exit(0)
+  }
+  
 
   }
 }
 
-
-/*
-
-    if(elevatorLogic.ShouldStopHere(elevator)){
-      fmt.Println("yes")
-      dataTypes.ElevatorInfoPrint(elevator)
-
-      elevator := clearAtCurrentFloor(elevator)
-      duration += config.DoorOpenTimeMs
-      elevator.CurrentDirection = elevatorLogic.FindNextDirection(elevator)
-      if elevator.CurrentDirection != dataTypes.D_Stop{
-        elevator.State = dataTypes.S_Moving
-      }
-      if elevator.Floor == 0 || elevator.Floor == _numFloors-1 || orders.Empty(elevator){
-        elevator.CurrentDirection = dataTypes.D_Stop
-      }
-      if(elevator.CurrentDirection == dataTypes.D_Stop){ //S_Stop
-        fmt.Println("Yes")
-        return duration
-      }
-    }
-
-    if (a > 100){
-      println("Error evig while")
-      os.Exit(0)
-    }
-    
-
-    elevator.Floor += elevatorLogic.FindNextDirection(elevator) //Dir?
-	duration += config.ElevatorTravelTimeMs
-	
-	*/

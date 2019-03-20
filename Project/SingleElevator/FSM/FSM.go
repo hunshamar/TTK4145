@@ -18,15 +18,14 @@ const _numFloors int = config.NumFloors
 const _numElevators int = config.NumElevators
 const _numOrderButtons int = config.NumOrderButtons
 
+var doorTimer    = timer.Timer_s{}
+var hardwareTimer = timer.Timer_s{}
 
 
 func StateMachine(elevatorNumber int, port string){
 	elevator := dataTypes.ElevatorInfo{}	
-	watchdogTimer := timer.Timer_s{}
-
 	elevio.Init("localhost:" +  port, _numFloors)
 	elevator = Init(elevatorNumber,elevator)
-	timer.WatchdogInit(int64(5000),&watchdogTimer)
 
 
 
@@ -38,28 +37,24 @@ func StateMachine(elevatorNumber int, port string){
 	obstruction           := make(chan bool)
 	timedOut              := make(chan bool)
 	TXMaster 			  := make(chan dataTypes.ElevatorInfo)
-	RXMaster 			  := make(chan dataTypes.AllElevatorInfo)
-	watchdogTimedOut   	  := make(chan bool)
-
+	RXMaster 			  := make(chan [_numElevators] dataTypes.ElevatorInfo)
+	hardwareTimerOut      := make(chan bool)
 
 	
 
 
-	go timer.WatchdogPoll(watchdogTimedOut,&watchdogTimer)
 	go elevio.PollButtons(buttonPress)
 	go elevio.PollStopButton(stopButtonPress)
 	go elevio.PollFloorSensor(floorSensor)
 	go elevio.PollObstructionSwitch(obstruction)
-	go timer.PollTimer(timedOut)
-
-
-	go bcast.Transmitter(config.ElevatorTXPort + elevatorNumber, TXMaster)
+	go timer.PollTimer(timedOut, &doorTimer)
+	go timer.PollTimer(hardwareTimerOut, &hardwareTimer)
+	go bcast.Transmitter(config.ElevatorTXPort + elevator.Number, TXMaster)
 	go bcast.Receiver(config.MasterTXPort, RXMaster)
 
 
 	go func(){ // Printer heisstatus 1 gang i sekundet
 		for{
-		dataTypes.OrdersPrint(elevator)
 		time.Sleep(1 * time.Second)
 		}
 	 }()
@@ -67,6 +62,7 @@ func StateMachine(elevatorNumber int, port string){
 	go func(){ // Sender info til master 10 ganger i sekundet
 		for{
 			TXMaster <- elevator
+			dataTypes.OrdersPrint(elevator)
 			time.Sleep(100 * time.Millisecond)
 			buttons.MirrorOrders(elevator)
 		}
@@ -75,84 +71,60 @@ func StateMachine(elevatorNumber int, port string){
 	
 	for{
 		select{
-			case b := <-buttonPress:
-				fmt.Println("Button pressed in elevator", elevatorNumber)
-				switch b.Button{
-				case dataTypes.BT_Cab:
-					elevator.LocalOrders[b.Button][b.Floor] = dataTypes.O_Handle
-				case dataTypes.BT_HallUp:
-					fallthrough
-				case dataTypes.BT_HallDown:
-					elevator.LocalOrders[b.Button][b.Floor] = dataTypes.O_Received 
-				}
 
-				if elevatorLogic.ShouldStopHere(elevator) && elevator.State != dataTypes.S_Moving{ // Order on current floor
-					elevator = HandleOrder(elevator)									
-				}else if elevator.State == dataTypes.S_Idle{
-					elevator = updateDirection(elevator) // Bestilling når idle
-				}
-				
-				
-				
-			case <-timedOut:
-				elevio.SetDoorOpenLamp(false)
-				elevator = updateDirection(elevator)
-				if elevator.CurrentDirection == dataTypes.D_Stop{
-					elevator.State = dataTypes.S_Idle
-				}
+		case b := <-buttonPress:
+			elevator.LocalOrders = orders.Add(elevator, b.Button, b.Floor)	
+			fmt.Println("Button pressed in elevator", elevatorNumber-1)
+			if elevatorLogic.ShouldStopHere(elevator) && elevator.State != dataTypes.S_Moving{ // Order on current floor
+				elevator = HandleOrder(elevator)										
+			}else if elevator.State == dataTypes.S_Idle{
+				elevator = updateDirection(elevator) // Bestilling når idle
+			}
+			
+		case f := <-floorSensor:
+			elevator.Floor = f
+			elevator.HardwareFunctioning = true // nødvendig
+			hardwareTimer.Run_time_ms += config.ElevatorTravelTimeMs
+			elevio.SetFloorIndicator(elevator.Floor)
 
-			case f := <-floorSensor:
+			if elevatorLogic.ShouldStopHere(elevator){
+				elevator = HandleOrder(elevator)
+			}else if (elevator.Floor == 0 || elevator.Floor == _numFloors-1){
+				elevio.SetMotorDirection(dataTypes.D_Stop)
+				elevator.State = dataTypes.S_Idle
+				elevator.CurrentDirection = dataTypes.D_Stop
+			}
 
-				/*
-				if hardWareAlert{
-					fmt.Println("Hardware alert")
-					hardWareAlert = false
-					elevator.HardwareFunctioning = true
-					elevator.State = dataTypes.S_Idle
-					elevio.SetMotorDirection(dataTypes.D_Stop)
-				
-				}*/
-				
+		case fromMaster := <-RXMaster:	
+			elevatorFromMaster := fromMaster[elevator.Number] 
+			elevator.LocalOrders = newOrdersFromMaster(elevator, elevatorFromMaster.LocalOrders) 
 
-				elevator.Floor = f
-				elevio.SetFloorIndicator(elevator.Floor)
-				if elevatorLogic.ShouldStopHere(elevator){
-					elevator = HandleOrder(elevator)
-				}
-				timer.WatchdogReset(&watchdogTimer)
+			if elevatorLogic.ShouldStopHere(elevator) && elevator.State != dataTypes.S_Moving{
+				elevator = HandleOrder(elevator)									
+			}else if elevator.State == dataTypes.S_Idle{
+				elevator = updateDirection(elevator) 
+			}		
+			
+		case <-timedOut:
 
 
-			case <-obstruction:
-				dataTypes.ElevatorInfoPrint(elevator)
+			elevio.SetDoorOpenLamp(false)
+			elevator = updateDirection(elevator)
+			if elevator.CurrentDirection == dataTypes.D_Stop{
+				elevator.State = dataTypes.S_Idle
+			}
 
-			 
-	
-			case fromMaster := <-RXMaster:	
-				elevatorFromMaster := fromMaster.Elevators[elevatorNumber -1] 
-				elevator.LocalOrders = newOrdersFromMaster(elevator, elevatorFromMaster.LocalOrders) 
+		case <- hardwareTimerOut:
+			if (elevator.State != dataTypes.S_Moving){
+				println("går fint") // kan fjerne alt dette?
+			}else{
+				println("HARDWARE ALERT")
+				elevator.HardwareFunctioning = false
+			}
 
-				
-				if elevatorLogic.ShouldStopHere(elevator) && elevator.State != dataTypes.S_Moving{
-					elevator = HandleOrder(elevator)									
-				}else if elevator.State == dataTypes.S_Idle{
-					elevator = updateDirection(elevator) 
-				}		
-			case  <-watchdogTimedOut:
-				/*
-				
-				if hardWareAlert{
-					fmt.Println("fucked")
-					fmt.Println("fucked")
-					fmt.Println("fucked")
-					elevator.HardwareFunctioning = false
-				}
-
-				if elevator.State == dataTypes.S_Moving{
-					fmt.Println("Set til 1 pga moving")
-					hardWareAlert = true
-					timer.WatchdogReset(&watchdogTimer)
-				}*/
-
+		
+		case <-obstruction:
+			dataTypes.ElevatorInfoPrint(elevator)
 		}
 	}
 		
@@ -166,6 +138,7 @@ func newOrdersFromMaster(elevator dataTypes.ElevatorInfo, ordersFromMaster [_num
 
 			switch ordersFromMaster[button][floor]{
 			case 0:	
+
 				if localOrders[button][floor] != dataTypes.O_Received{
 					localOrders[button][floor] = ordersFromMaster[button][floor]
 				}
@@ -197,7 +170,7 @@ func Init(elevatorNumber int, elevator dataTypes.ElevatorInfo)dataTypes.Elevator
 	elevator.CurrentDirection = dataTypes.D_Stop 
 	elevator.LocalOrders = [_numOrderButtons][_numFloors]int{} // Clear orders
 	elevator.State = dataTypes.S_Idle
-	elevator.Number = elevatorNumber
+	elevator.Number = elevatorNumber-1
 
 	elevio.SetMotorDirection(elevator.CurrentDirection)
 	fmt.Println("Init complete")
@@ -210,8 +183,8 @@ func HandleOrder(elevator dataTypes.ElevatorInfo)dataTypes.ElevatorInfo{
 	elevator.LocalOrders = orders.Execute(elevator)
 	elevator.State = dataTypes.S_DoorOpen
 	elevio.SetMotorDirection(dataTypes.D_Stop)
-	timer.Start(config.DoorOpenTimeMs)
 	elevio.SetDoorOpenLamp(true)
+	timer.Start(config.DoorOpenTimeMs, &doorTimer)
 	return elevator
 }
 
@@ -220,6 +193,7 @@ func updateDirection(elevator dataTypes.ElevatorInfo)dataTypes.ElevatorInfo{
 	elevio.SetMotorDirection(elevator.CurrentDirection)
 	if elevator.CurrentDirection != dataTypes.D_Stop{
 		elevator.State = dataTypes.S_Moving
+		timer.Start(config.ElevatorTravelTimeMs * 2, &hardwareTimer)
 	}
 	return elevator
 }

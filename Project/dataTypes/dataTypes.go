@@ -71,14 +71,15 @@ type ElevatorInfo struct{
 	State ElevatorState
 }
 
-
 type AllElevatorInfo struct{
-	Elevators[_numElevators] ElevatorInfo
+	Elevators [_numElevators] ElevatorInfo
 }
+
+
 
 type BackupMessage struct{
 	ID int
-	Elevators AllElevatorInfo
+	Elevators [_numElevators] ElevatorInfo
 }
 
 type HelloMsg struct {
@@ -105,11 +106,11 @@ func ElevatorInfoPrint(EI ElevatorInfo){
 	fmt.Println("----------------------")
 }
 
-func AllElevatorsPrint(Elevators AllElevatorInfo){
+func AllElevatorsPrint(Elevators [_numElevators] ElevatorInfo){
 	fmt.Println("             | H  up | | H  dn | |  Cab   |")
 
 	for e := 0; e < _numElevators; e++{
 		fmt.Print("Elevator ", e)
-		OrdersPrint(Elevators.Elevators[e])
+		OrdersPrint(Elevators[e])
 	}
 }
