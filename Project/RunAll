@@ -1,0 +1,8 @@
+#!/bin/bash
+
+
+gnome-terminal --window -x ./SimElevatorServer --port $2
+
+gnome-terminal --window -x ./Master $1
+
+gnome-terminal --window -x ./SingleElevator $1 $2
