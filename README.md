@@ -12,6 +12,9 @@ For each elevator there are three files that need to run:
 
 Use `chmod +x <filename>`in order to give permission to run the files.
 
+Either use the `./RunAll`followed by an ID > 1 and elevator port. For example
+`./RunAll 1 15657`
+`./RunAll 2 15658`etc. or
 
 - A simulator or a network connection to a hardware elevator, both located in the repository. To run the simulator write for example `./SimElevatorServer --port 15657 --numfloors 4` If no floor or port is specified the port will be 15657 and numfloors will be 4. 
 
@@ -20,6 +23,7 @@ Use `chmod +x <filename>`in order to give permission to run the files.
 - A master/backup file named `Master`. This also needs a unique number. Use 1,2,3, the same as the elevators when running. For example `./Master 1`, `./Master 2` etc. Master 1 will start as master, while the others will become backups, if the master crashes the backup with highest priority (number 2) will become master. If multiple masters are connected to the network simultaneously, the master with the lowest number (highest priority) will become master. 
 
 All of the ports and constants, like number of elevators, number of floors, door open time, UDP-ports etc. are specified in the `config` file. If they are changed the elevator and master files have to be rebuildt by running the `BuildAll`file. 
+
 
 Short Explanation of the Software Design
 ----------------------------------------
